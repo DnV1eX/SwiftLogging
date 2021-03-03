@@ -37,29 +37,82 @@ public struct Log {
     }
 
     
-    public struct Message: ExpressibleByStringInterpolation {
+    public struct Message: ExpressibleByStringInterpolation, CustomStringConvertible, CustomDebugStringConvertible {
+        
+        public enum Segment {
+            case literal(String)
+            case interpolation(Any)
+            case numeric(Any)
+            case `private`(Any)
+            case `public`(Any)
+        }
         
         public struct StringInterpolation: StringInterpolationProtocol {
             
-            public init(literalCapacity: Int, interpolationCount: Int) {
-                
+            public var segments: [Segment] = []
+            
+            @inlinable public init(literalCapacity: Int, interpolationCount: Int) {
+                segments.reserveCapacity(interpolationCount * 2 + 1)
             }
 
-            public func appendLiteral(_ literal: StringLiteralType) {
-                
+            @inlinable public mutating func appendLiteral(_ literal: StringLiteralType) {
+                segments.append(.literal(literal))
             }
             
-            public func appendInterpolation(_ literal: StringLiteralType) {
-                
+            @inlinable public mutating func appendInterpolation<T>(_ interpolation: T) {
+                segments.append(.interpolation(interpolation))
+            }
+            
+            @inlinable public mutating func appendInterpolation<T: Numeric>(_ numeric: T) {
+                segments.append(.numeric(numeric))
+            }
+            
+            @inlinable public mutating func appendInterpolation<T>(private: T) {
+                segments.append(.private(`private`))
+            }
+            
+            @inlinable public mutating func appendInterpolation<T>(public: T) {
+                segments.append(.public(`public`))
             }
         }
         
+        public let segments: [Segment]
+        
         public init(stringLiteral value: StringLiteralType) {
-            
+            segments = [.literal(value)]
         }
         
         public init(stringInterpolation: StringInterpolation) {
-            
+            segments = stringInterpolation.segments
+        }
+        
+        public var description: String {
+            segments.reduce(into: "") { result, segment in
+                switch segment {
+                case let .literal(literal):
+                    result.append(literal)
+                case let .public(interpolation),
+                     let .numeric(interpolation):
+                    result.append(String(describing: interpolation))
+                case let .private(interpolation),
+                     let .interpolation(interpolation):
+                    result.append("<\(withUnsafeBytes(of: String(reflecting: interpolation).hashValue) { Data($0) }.base64EncodedString())>")
+                }
+            }
+        }
+        
+        public var debugDescription: String {
+            segments.reduce(into: "") { result, segment in
+                switch segment {
+                case let .literal(literal):
+                    result.append(literal)
+                case let .public(interpolation),
+                     let .numeric(interpolation),
+                     let .private(interpolation),
+                     let .interpolation(interpolation):
+                    result.append(String(describing: interpolation))
+                }
+            }
         }
     }
     
@@ -78,33 +131,47 @@ public struct Log {
     
     public typealias Settings = (label: String, level: Level, privacy: Bool, metadata: Metadata)
     
-    public typealias Handlers = (Settings) -> [LogHandler]
+    public typealias Handlers = (Settings) -> [Handler]
+    
+    public typealias Handler = (_ level: Level, _ message: () -> Message, _ metadata: () -> Metadata, _ file: String, _ function: String, _ line: UInt) -> Void
+    
+    public typealias Parameters = (level: Level, message: () -> Message, metadata: () -> Metadata, file: String, function: String, line: UInt)
     
 
     @_functionBuilder
     public enum HandlerBuilder {
         
-        public static func buildExpression(_ handler: LogHandler) -> [LogHandler] {
+        public static func buildExpression(_ handler: @escaping Handler) -> [Handler] {
             [handler]
         }
 
-        public static func buildBlock(_ handlers: [LogHandler]...) -> [LogHandler] {
+        public static func buildExpression(_ handler: @escaping (Parameters) -> Void) -> [Handler] {
+            [{ level, message, metadata, file, function, line in
+                withoutActuallyEscaping(message) { message in
+                    withoutActuallyEscaping(metadata) { metadata in
+                        handler((level, message, metadata, file, function, line))
+                    }
+                }
+            }]
+        }
+
+        public static func buildBlock(_ handlers: [Handler]...) -> [Handler] {
             Array(handlers.joined())
         }
 
-        public static func buildOptional(_ optional: [LogHandler]?) -> [LogHandler] {
+        public static func buildOptional(_ optional: [Handler]?) -> [Handler] {
             optional ?? []
         }
 
-        public static func buildEither(first handlers: [LogHandler]) -> [LogHandler] {
+        public static func buildEither(first handlers: [Handler]) -> [Handler] {
             handlers
         }
 
-        public static func buildEither(second handlers: [LogHandler]) -> [LogHandler] {
+        public static func buildEither(second handlers: [Handler]) -> [Handler] {
             handlers
         }
 
-        public static func buildArray(_ handlers: [[LogHandler]]) -> [LogHandler] {
+        public static func buildArray(_ handlers: [[Handler]]) -> [Handler] {
             Array(handlers.joined())
         }
     }
@@ -122,11 +189,11 @@ public struct Log {
     @Atomic public static var handlers: Handlers = defaultHandlers
     
     
-    @HandlerBuilder public static func defaultHandlers(settings: Settings) -> [LogHandler] {
-        if PrintLogHandler.isStandardOutputAvailable {
-            PrintLogHandler(settings: settings)
+    @HandlerBuilder public static func defaultHandlers(settings: Settings) -> [Handler] {
+        if PrintLogging.isStandardOutputAvailable {
+            PrintLogging(settings: settings).log
         } else {
-            OSLogHandler()
+            OSLogging().log
         }
     }
     
@@ -149,7 +216,7 @@ public struct Log {
     
     public let level: Level
 
-    public let handlers: [LogHandler]
+    public let handlers: [Handler]
     
 
     public init(label: String, level: Level = level, privacy: Bool = privacy, metadata: Metadata = metadata, @HandlerBuilder handlers: Handlers = handlers) {
@@ -163,7 +230,7 @@ public struct Log {
     public func callAsFunction(_ level: Level, _ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = #file, function: String = #function, line: UInt = #line) {
         
         for handler in handlers {
-            handler.log(level, message(), metadata(), file: file, function: function, line: line)
+            handler(level, message, metadata, file, function, line)
         }
     }
     
@@ -171,7 +238,7 @@ public struct Log {
     public func callAsFunction(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = #file, function: String = #function, line: UInt = #line) {
         
         for handler in handlers {
-            handler.log(level, message(), metadata(), file: file, function: function, line: line)
+            handler(level, message, metadata, file, function, line)
         }
     }
     
@@ -179,7 +246,7 @@ public struct Log {
     public func callAsFunction(_ level: Level, message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = #file, function: String = #function, line: UInt = #line) {
         
         for handler in handlers {
-            handler.log(level, Message(stringLiteral: message()), metadata(), file: file, function: function, line: line)
+            handler(level, { Message(stringLiteral: message()) }, metadata, file, function, line)
         }
     }
     
@@ -187,18 +254,18 @@ public struct Log {
     public func callAsFunction(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = #file, function: String = #function, line: UInt = #line) {
         
         for handler in handlers {
-            handler.log(level, Message(stringLiteral: message()), metadata(), file: file, function: function, line: line)
+            handler(level, { Message(stringLiteral: message()) }, metadata, file, function, line)
         }
     }
 }
 
 
-
+/*
 public protocol LogHandler {
     
     func log(_ level: Log.Level, _ message: @autoclosure () -> Log.Message, _ metadata: @autoclosure () -> Log.Metadata, file: String, function: String, line: UInt)
 }
-
+*/
 
 
 public extension Log.Level {

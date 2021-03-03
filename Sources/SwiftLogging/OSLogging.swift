@@ -1,8 +1,8 @@
 //
-//  PrintLogHandler.swift
+//  OSLogging.swift
 //  SwiftLogging
 //
-//  Created by Alexey Demin on 2021-02-26.
+//  Created by Alexey Demin on 2021-02-12.
 //  Copyright © 2021 DnV1eX. All rights reserved.
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,31 +18,12 @@
 //  limitations under the License.
 //
 
-import Foundation
+import OSLog
 
 
-struct PrintLogHandler: LogHandler {
-    
-    /// Whether the standard output is associated with a terminal.
-    public static var isStandardOutputAvailable: Bool {
-        isatty(STDOUT_FILENO) != 0
-    }
-
-    
-    @Atomic public static var output: TextOutputStream?
-    
-    
-    public let output: TextOutputStream?
-    
-    
-    init(settings: Log.Settings, output: TextOutputStream? = output) {
-        
-        self.output = output
-    }
-    
+struct OSLogging {
     
     func log(_ level: Log.Level, _ message: @autoclosure () -> Log.Message, _ metadata: @autoclosure () -> Log.Metadata, file: String, function: String, line: UInt) {
         
-        print(message())
     }
 }
