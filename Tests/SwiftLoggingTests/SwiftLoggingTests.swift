@@ -62,15 +62,72 @@ final class SwiftLoggingTests: XCTestCase {
         XCTAssertEqual(message.description, "404")
         XCTAssertEqual(message.debugDescription, "404")
     }
+    
+    
+    func testPrintLogging() {
+        
+        let log = Log(label: String(describing: Self.self)) {
+            PrintLogging(label: $0.label, items: .all).log
+        }
+        log(.trace, "Trace message", [.description: Log.Level.trace])
+        log(.debug, "Debug message", [.description: Log.Level.debug])
+        log(.info, "Info message", [.description: Log.Level.info])
+        log(.notice, "Notice message", [.description: Log.Level.notice])
+        log(.warning, "Warning message", [.description: Log.Level.warning])
+        log(.error, "Error message", [.description: Log.Level.error])
+        log(.critical, "Critical message", [.description: Log.Level.critical])
+        log(.alert, "Alert message", [.description: Log.Level.alert])
+        log(.emergency, "Emergency message", [.description: Log.Level.emergency])
+    }
+    
+    
+    func testLoggable() {
+        TestLoggable.log("Test loggable")
+        measure {
+            for _ in 0...1000 {
+                _ = TestLoggable.log
+            }
+        }
+    }
+    
+    func testLoggableClass() {
+        TestLoggableClass.log("Test loggable class")
+        measure {
+            for _ in 0...1000000 {
+                _ = TestLoggableClass.log
+            }
+        }
+    }
+    
+    func testLoggableStruct() {
+        TestLoggableStruct.log("Test loggable struct")
+        measure {
+            for _ in 0...1000000 {
+                _ = TestLoggableStruct.log
+            }
+        }
+    }
 }
 
 
 
-struct TestLogging {
+struct TestLogging: Logging {
     
     unowned let tests: SwiftLoggingTests
 
     func log(_ level: Log.Level, _ message: @autoclosure () -> Log.Message, _ metadata: @autoclosure () -> Log.Metadata, file: String, function: String, line: UInt) {
         tests.callback((level, message(), metadata(), file, function, line))
     }
+}
+
+
+
+class TestLoggable: Loggable { }
+
+class TestLoggableClass: Loggable {
+    static var log = defaultLog
+}
+
+struct TestLoggableStruct: Loggable {
+    static var log = defaultLog
 }

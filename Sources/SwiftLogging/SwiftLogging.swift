@@ -76,6 +76,10 @@ public struct Log {
             }
         }
         
+        public static func hashing(_ value: Any) -> String {
+            "<\(withUnsafeBytes(of: String(reflecting: value).hashValue) { Data($0) }.base64EncodedString())>"
+        }
+        
         public let segments: [Segment]
         
         public init(stringLiteral value: StringLiteralType) {
@@ -96,7 +100,7 @@ public struct Log {
                     result.append(String(describing: interpolation))
                 case let .private(interpolation),
                      let .interpolation(interpolation):
-                    result.append("<\(withUnsafeBytes(of: String(reflecting: interpolation).hashValue) { Data($0) }.base64EncodedString())>")
+                    result.append(Self.hashing(interpolation))
                 }
             }
         }
@@ -117,12 +121,16 @@ public struct Log {
     }
     
     
-    public struct Key: Hashable, ExpressibleByStringInterpolation {
+    public struct Key: Hashable, Equatable, ExpressibleByStringInterpolation, CustomStringConvertible {
         
         public let string: String
         
         public init(stringLiteral value: StringLiteralType) {
             string = value
+        }
+        
+        public var description: String {
+            string
         }
     }
     
@@ -191,7 +199,7 @@ public struct Log {
     
     @HandlerBuilder public static func defaultHandlers(settings: Settings) -> [Handler] {
         if PrintLogging.isStandardOutputAvailable {
-            PrintLogging(settings: settings).log
+            PrintLogging(label: settings.label).log
         } else {
             OSLogging().log
         }
@@ -218,7 +226,7 @@ public struct Log {
 
     public let handlers: [Handler]
     
-
+    @inlinable
     public init(label: String, level: Level = level, privacy: Bool = privacy, metadata: Metadata = metadata, @HandlerBuilder handlers: Handlers = handlers) {
         
         self.label = label
@@ -226,32 +234,32 @@ public struct Log {
         self.handlers = handlers((label, level, privacy, metadata))
     }
     
-    
-    public func callAsFunction(_ level: Level, _ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = #file, function: String = #function, line: UInt = #line) {
+    @inlinable
+    public func callAsFunction(_ level: Level, _ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
         
         for handler in handlers {
             handler(level, message, metadata, file, function, line)
         }
     }
     
-    
-    public func callAsFunction(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = #file, function: String = #function, line: UInt = #line) {
+    @inlinable
+    public func callAsFunction(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
         
         for handler in handlers {
             handler(level, message, metadata, file, function, line)
         }
     }
     
-    
-    public func callAsFunction(_ level: Level, message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = #file, function: String = #function, line: UInt = #line) {
+    @inlinable
+    public func callAsFunction(_ level: Level, message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
         
         for handler in handlers {
             handler(level, { Message(stringLiteral: message()) }, metadata, file, function, line)
         }
     }
     
-    
-    public func callAsFunction(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = #file, function: String = #function, line: UInt = #line) {
+    @inlinable
+    public func callAsFunction(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
         
         for handler in handlers {
             handler(level, { Message(stringLiteral: message()) }, metadata, file, function, line)
@@ -260,12 +268,12 @@ public struct Log {
 }
 
 
-/*
-public protocol LogHandler {
+
+public protocol Logging {
     
     func log(_ level: Log.Level, _ message: @autoclosure () -> Log.Message, _ metadata: @autoclosure () -> Log.Metadata, file: String, function: String, line: UInt)
 }
-*/
+
 
 
 public extension Log.Level {
