@@ -34,19 +34,3 @@ extension Loggable {
     
     static var defaultLog: Log { Log(label: String(reflecting: self)) }
 }
-
-
-private var key: Void = ()
-
-extension Loggable where Self: AnyObject {
-    
-    static var log: Log {
-        if let log = objc_getAssociatedObject(self, &key) as? Log {
-            return log
-        } else {
-            let log = defaultLog
-            objc_setAssociatedObject(self, &key, log, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            return log
-        }
-    }
-}

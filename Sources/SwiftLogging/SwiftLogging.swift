@@ -221,18 +221,24 @@ public struct Log {
     
     
     public let label: String
-    
     public let level: Level
+    public let privacy: Bool
+    public let metadata: Metadata
 
     public let handlers: [Handler]
+    
     
     @inlinable
     public init(label: String, level: Level = level, privacy: Bool = privacy, metadata: Metadata = metadata, @HandlerBuilder handlers: Handlers = handlers) {
         
         self.label = label
         self.level = level
+        self.privacy = privacy
+        self.metadata = metadata
+        
         self.handlers = handlers((label, level, privacy, metadata))
     }
+    
     
     @inlinable
     public func callAsFunction(_ level: Level, _ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
@@ -265,13 +271,339 @@ public struct Log {
             handler(level, { Message(stringLiteral: message()) }, metadata, file, function, line)
         }
     }
+    
+    @inlinable
+    public func callAsFunction(_ level: Level, _ message: @autoclosure () -> Message, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(level, message, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    public func callAsFunction(_ message: @autoclosure () -> Message, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(level, message, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    public func callAsFunction(_ level: Level, message: @autoclosure () -> String, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(level, { Message(stringLiteral: message()) }, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    public func callAsFunction(message: @autoclosure () -> String, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(level, { Message(stringLiteral: message()) }, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
 }
 
 
 
-public protocol Logging {
+public extension Log {
     
-    func log(_ level: Log.Level, _ message: @autoclosure () -> Log.Message, _ metadata: @autoclosure () -> Log.Metadata, file: String, function: String, line: UInt)
+    @inlinable
+    func trace(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.trace, message, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func trace(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.trace, { Message(stringLiteral: message()) }, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func trace(_ message: @autoclosure () -> Message, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.trace, message, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func trace(message: @autoclosure () -> String, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.trace, { Message(stringLiteral: message()) }, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    
+    @inlinable
+    func debug(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.debug, message, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func debug(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.debug, { Message(stringLiteral: message()) }, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func debug(_ message: @autoclosure () -> Message, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.debug, message, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func debug(message: @autoclosure () -> String, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.debug, { Message(stringLiteral: message()) }, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    
+    @inlinable
+    func info(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.info, message, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func info(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.info, { Message(stringLiteral: message()) }, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func info(_ message: @autoclosure () -> Message, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.info, message, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func info(message: @autoclosure () -> String, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.info, { Message(stringLiteral: message()) }, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    
+    @inlinable
+    func notice(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.notice, message, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func notice(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.notice, { Message(stringLiteral: message()) }, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func notice(_ message: @autoclosure () -> Message, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.notice, message, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func notice(message: @autoclosure () -> String, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.notice, { Message(stringLiteral: message()) }, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    
+    @inlinable
+    func warning(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.warning, message, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func warning(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.warning, { Message(stringLiteral: message()) }, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func warning(_ message: @autoclosure () -> Message, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.warning, message, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func warning(message: @autoclosure () -> String, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.warning, { Message(stringLiteral: message()) }, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    
+    @inlinable
+    func error(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.error, message, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func error(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.error, { Message(stringLiteral: message()) }, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func error(_ message: @autoclosure () -> Message, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.error, message, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func error(message: @autoclosure () -> String, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.error, { Message(stringLiteral: message()) }, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    
+    @inlinable
+    func critical(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.critical, message, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func critical(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.critical, { Message(stringLiteral: message()) }, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func critical(_ message: @autoclosure () -> Message, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.critical, message, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func critical(message: @autoclosure () -> String, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.critical, { Message(stringLiteral: message()) }, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    
+    @inlinable
+    func alert(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.alert, message, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func alert(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.alert, { Message(stringLiteral: message()) }, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func alert(_ message: @autoclosure () -> Message, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.alert, message, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func alert(message: @autoclosure () -> String, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.alert, { Message(stringLiteral: message()) }, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    
+    @inlinable
+    func emergency(_ message: @autoclosure () -> Message, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.emergency, message, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func emergency(message: @autoclosure () -> String, _ metadata: @autoclosure () -> Metadata = [:], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.emergency, { Message(stringLiteral: message()) }, metadata, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func emergency(_ message: @autoclosure () -> Message, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.emergency, message, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
+    
+    @inlinable
+    func emergency(message: @autoclosure () -> String, metadata: @autoclosure () -> [AnyHashable : Any], file: String = (#file as NSString).lastPathComponent, function: String = #function, line: UInt = #line) {
+        
+        for handler in handlers {
+            handler(.emergency, { Message(stringLiteral: message()) }, { metadata().reduce(into: [:]) { $0[Key(stringLiteral: String(describing: $1.key))] = $1.value } }, file, function, line)
+        }
+    }
 }
 
 
@@ -297,6 +629,13 @@ public extension Log.Key {
     static let buildConfiguration: Self = "buildConfiguration"
     static let error: Self = "error"
     static let description: Self = "description"
+}
+
+
+
+public protocol Logging {
+    
+    func log(_ level: Log.Level, _ message: @autoclosure () -> Log.Message, _ metadata: @autoclosure () -> Log.Metadata, file: String, function: String, line: UInt)
 }
 
 

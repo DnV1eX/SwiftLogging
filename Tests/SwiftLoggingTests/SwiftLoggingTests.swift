@@ -4,23 +4,30 @@ import XCTest
 
 final class SwiftLoggingTests: XCTestCase {
     
-    var callback: (((level: Log.Level, message: Log.Message, metadata: Log.Metadata, file: String, function: String, line: UInt)) -> Void)!
-    
-    
     func testLogging() {
         
-        let log = Log(label: "Test label", level: .alert) { settings in
-            TestLogging(tests: self).log
+        let log = Log(label: "Test label", level: .trace) { settings in
+            TestLogging().log
         }
         XCTAssertEqual(log.label, "Test label")
-        XCTAssertEqual(log.level, .alert)
-        callback = {
+        XCTAssertEqual(log.level, .trace)
+        TestLogging.callback = {
             XCTAssertEqual($0.level, .trace)
-            XCTAssertEqual("\($0.message)", "Test message")
+            XCTAssertEqual($0.message.description, "Test message")
             XCTAssertEqual($0.metadata[.error] as? Int, 404)
             XCTAssertEqual($0.metadata["key"] as? String, "Test key")
         }
+        let text = "Test message"
+        let userInfo = ["error": 404, "key": "Test key"] as [AnyHashable : Any]
+        
         log(.trace, "Test message", [.error: 404, "key": "Test key"])
+        log("Test message", [.error: 404, "key": "Test key"])
+        log(.trace, message: text, [.error: 404, "key": "Test key"])
+        log(message: text, [.error: 404, "key": "Test key"])
+        log(.trace, "Test message", metadata: userInfo)
+        log("Test message", metadata: userInfo)
+        log(.trace, message: text, metadata: userInfo)
+        log(message: text, metadata: userInfo)
     }
 
     
@@ -32,6 +39,91 @@ final class SwiftLoggingTests: XCTestCase {
         }
         log("Test print")
         XCTAssertEqual(output, "Test print")
+    }
+    
+    
+    func testDefaults() {
+        
+        XCTAssertEqual(Log.level, .info)
+        XCTAssertEqual(Log.privacy, true)
+        XCTAssert(Log.metadata.isEmpty)
+
+        let log = Log(label: "")
+        XCTAssertEqual(log.level, .info)
+        XCTAssertEqual(log.privacy, true)
+        XCTAssert(log.metadata.isEmpty)
+        XCTAssertEqual(log.handlers.count, 1)
+    }
+    
+    
+    func testLevel() {
+        
+        XCTAssertEqual(Log.Level.trace.severity, 0.1)
+        XCTAssertEqual(Log.Level.debug.severity, 0.2)
+        XCTAssertEqual(Log.Level.info.severity, 0.3)
+        XCTAssertEqual(Log.Level.notice.severity, 0.4)
+        XCTAssertEqual(Log.Level.warning.severity, 0.5)
+        XCTAssertEqual(Log.Level.error.severity, 0.6)
+        XCTAssertEqual(Log.Level.critical.severity, 0.7)
+        XCTAssertEqual(Log.Level.alert.severity, 0.8)
+        XCTAssertEqual(Log.Level.emergency.severity, 0.9)
+
+        let log = Log(label: "") { _ in
+            {
+                XCTAssertEqual($0.level.severity, Double($0.message().description))
+                XCTAssertEqual($0.level.severity, $0.metadata()["level"] as? Double)
+            }
+        }
+        
+        log(0.321, "0.321", ["level": 0.321])
+        log(0.321, message: "0.321", ["level": 0.321])
+        log(0.321, "0.321", metadata: ["level": 0.321])
+        log(0.321, message: "0.321", metadata: ["level": 0.321])
+
+        log.trace("0.1", ["level": 0.1])
+        log.trace(message: "0.1", ["level": 0.1])
+        log.trace("0.1", metadata: ["level": 0.1])
+        log.trace(message: "0.1", metadata: ["level": 0.1])
+
+        log.debug("0.2", ["level": 0.2])
+        log.debug(message: "0.2", ["level": 0.2])
+        log.debug("0.2", metadata: ["level": 0.2])
+        log.debug(message: "0.2", metadata: ["level": 0.2])
+
+        log.info("0.3", ["level": 0.3])
+        log.info(message: "0.3", ["level": 0.3])
+        log.info("0.3", metadata: ["level": 0.3])
+        log.info(message: "0.3", metadata: ["level": 0.3])
+
+        log.notice("0.4", ["level": 0.4])
+        log.notice(message: "0.4", ["level": 0.4])
+        log.notice("0.4", metadata: ["level": 0.4])
+        log.notice(message: "0.4", metadata: ["level": 0.4])
+
+        log.warning("0.5", ["level": 0.5])
+        log.warning(message: "0.5", ["level": 0.5])
+        log.warning("0.5", metadata: ["level": 0.5])
+        log.warning(message: "0.5", metadata: ["level": 0.5])
+
+        log.error("0.6", ["level": 0.6])
+        log.error(message: "0.6", ["level": 0.6])
+        log.error("0.6", metadata: ["level": 0.6])
+        log.error(message: "0.6", metadata: ["level": 0.6])
+
+        log.critical("0.7", ["level": 0.7])
+        log.critical(message: "0.7", ["level": 0.7])
+        log.critical("0.7", metadata: ["level": 0.7])
+        log.critical(message: "0.7", metadata: ["level": 0.7])
+
+        log.alert("0.8", ["level": 0.8])
+        log.alert(message: "0.8", ["level": 0.8])
+        log.alert("0.8", metadata: ["level": 0.8])
+        log.alert(message: "0.8", metadata: ["level": 0.8])
+
+        log.emergency("0.9", ["level": 0.9])
+        log.emergency(message: "0.9", ["level": 0.9])
+        log.emergency("0.9", metadata: ["level": 0.9])
+        log.emergency(message: "0.9", metadata: ["level": 0.9])
     }
     
     
@@ -81,30 +173,32 @@ final class SwiftLoggingTests: XCTestCase {
     }
     
     
-    func testLoggable() {
-        TestLoggable.log("Test loggable")
+    func testLoggableClass() {
+        
+        TestLoggableClass.log("Test loggable class")
+        TestLoggableClass().log("Test loggable class instance")
+        
         measure {
-            for _ in 0...1000 {
-                _ = TestLoggable.log
+            var log: Log?
+            for _ in 0...100000 {
+                log = TestLoggableClass.log
             }
+            _ = log
         }
     }
     
-    func testLoggableClass() {
-        TestLoggableClass.log("Test loggable class")
-        measure {
-            for _ in 0...1000000 {
-                _ = TestLoggableClass.log
-            }
-        }
-    }
     
     func testLoggableStruct() {
+        
         TestLoggableStruct.log("Test loggable struct")
+        TestLoggableStruct().log("Test loggable struct instance")
+        
         measure {
-            for _ in 0...1000000 {
-                _ = TestLoggableStruct.log
+            var log: Log?
+            for _ in 0...100000 {
+                log = TestLoggableStruct.log
             }
+            _ = log
         }
     }
 }
@@ -113,20 +207,19 @@ final class SwiftLoggingTests: XCTestCase {
 
 struct TestLogging: Logging {
     
-    unowned let tests: SwiftLoggingTests
+    static var callback: (((level: Log.Level, message: Log.Message, metadata: Log.Metadata, file: String, function: String, line: UInt)) -> Void)!
 
     func log(_ level: Log.Level, _ message: @autoclosure () -> Log.Message, _ metadata: @autoclosure () -> Log.Metadata, file: String, function: String, line: UInt) {
-        tests.callback((level, message(), metadata(), file, function, line))
+        Self.callback((level, message(), metadata(), file, function, line))
     }
 }
 
 
 
-class TestLoggable: Loggable { }
-
 class TestLoggableClass: Loggable {
     static var log = defaultLog
 }
+
 
 struct TestLoggableStruct: Loggable {
     static var log = defaultLog
