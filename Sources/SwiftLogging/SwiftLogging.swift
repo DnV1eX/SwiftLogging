@@ -41,10 +41,11 @@ public struct Log {
         
         public enum Segment {
             case literal(String)
-            case interpolation(Any)
+            case `default`(Any)
             case numeric(Any)
             case `private`(Any)
             case `public`(Any)
+            case custom(Any, stringConversion: (Any) -> String, debugStringConversion: (Any) -> String)
         }
         
         public struct StringInterpolation: StringInterpolationProtocol {
@@ -60,19 +61,19 @@ public struct Log {
             }
             
             @inlinable public mutating func appendInterpolation<T>(_ interpolation: T) {
-                segments.append(.interpolation(interpolation))
+                segments.append(.default(interpolation))
             }
             
-            @inlinable public mutating func appendInterpolation<T: Numeric>(_ numeric: T) {
-                segments.append(.numeric(numeric))
+            @inlinable public mutating func appendInterpolation<T: Numeric>(_ interpolation: T) {
+                segments.append(.numeric(interpolation))
             }
             
-            @inlinable public mutating func appendInterpolation<T>(private: T) {
-                segments.append(.private(`private`))
+            @inlinable public mutating func appendInterpolation<T>(private interpolation: T) {
+                segments.append(.private(interpolation))
             }
             
-            @inlinable public mutating func appendInterpolation<T>(public: T) {
-                segments.append(.public(`public`))
+            @inlinable public mutating func appendInterpolation<T>(public interpolation: T) {
+                segments.append(.public(interpolation))
             }
         }
         
@@ -99,8 +100,10 @@ public struct Log {
                      let .numeric(interpolation):
                     result.append(String(describing: interpolation))
                 case let .private(interpolation),
-                     let .interpolation(interpolation):
+                     let .default(interpolation):
                     result.append(Self.hashing(interpolation))
+                case let .custom(interpolation, stringConversion, _):
+                    result.append(stringConversion(interpolation))
                 }
             }
         }
@@ -113,8 +116,10 @@ public struct Log {
                 case let .public(interpolation),
                      let .numeric(interpolation),
                      let .private(interpolation),
-                     let .interpolation(interpolation):
+                     let .default(interpolation):
                     result.append(String(describing: interpolation))
+                case let .custom(interpolation, _, debugStringConversion):
+                    result.append(debugStringConversion(interpolation))
                 }
             }
         }
@@ -199,9 +204,9 @@ public struct Log {
     
     @HandlerBuilder public static func defaultHandlers(settings: Settings) -> [Handler] {
         if PrintLogging.isStandardOutputAvailable {
-            PrintLogging(label: settings.label).log
+            PrintLogging(source: settings.label).log
         } else {
-            OSLogging().log
+            OSLogging(subsystem: settings.label, metadata: settings.metadata).log
         }
     }
     

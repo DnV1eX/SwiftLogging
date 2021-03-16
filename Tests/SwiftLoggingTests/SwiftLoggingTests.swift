@@ -159,7 +159,9 @@ final class SwiftLoggingTests: XCTestCase {
     func testPrintLogging() {
         
         let log = Log(label: String(describing: Self.self)) {
-            PrintLogging(label: $0.label, items: .all).log
+            PrintLogging(source: $0.label, items: .brief).log
+            PrintLogging(source: $0.label).log
+            PrintLogging(source: $0.label, items: .all).log
         }
         log(.trace, "Trace message", [.description: Log.Level.trace])
         log(.debug, "Debug message", [.description: Log.Level.debug])
@@ -170,6 +172,17 @@ final class SwiftLoggingTests: XCTestCase {
         log(.critical, "Critical message", [.description: Log.Level.critical])
         log(.alert, "Alert message", [.description: Log.Level.alert])
         log(.emergency, "Emergency message", [.description: Log.Level.emergency])
+    }
+    
+    
+    func testOSLogging() {
+        
+        let log = Log(label: String(reflecting: Self.self), level: .notice, metadata: ["global": true]) {
+            OSLogging(subsystem: $0.label, metadata: $0.metadata).log
+            OSLogging(subsystem: $0.label, category: "Public", privacy: false, metadata: $0.metadata).log
+        }
+        log("Test message", [.error: 404, "key": "Test key"])
+        log("Test \("message")", [.error: 404, "key": "Test key"])
     }
     
     

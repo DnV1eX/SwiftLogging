@@ -21,10 +21,15 @@
 import Foundation
 
 
-struct PrintLogging {
+public struct PrintLogging {
     
     public struct ItemOptions: OptionSet {
+        
         public let rawValue: Int
+        
+        public init(rawValue: Int) {
+            self.rawValue = rawValue
+        }
         
         public static let date = Self(rawValue: 1 << 0)
         public static let time = Self(rawValue: 1 << 1)
@@ -33,7 +38,7 @@ struct PrintLogging {
         
         public static let severity = Self(rawValue: 1 << 4)
         
-        public static let label = Self(rawValue: 1 << 5)
+        public static let source = Self(rawValue: 1 << 5)
         
         public static let metadataKeys = Self(rawValue: 1 << 6)
         public static let metadataValues = Self(rawValue: 1 << 7)
@@ -48,9 +53,9 @@ struct PrintLogging {
         public static let sourceLocation: Self = [file, function, line]
         
         public static let message: Self = []
-        public static let brief: Self = [fractionalSeconds, severity, label, metadataValues]
-        public static let `default`: Self = [timestamp, severity, label, metadata]
-        public static let all: Self = [fullDateTime, severity, label, metadata, sourceLocation]
+        public static let brief: Self = [fractionalSeconds, severity, source, metadataValues]
+        public static let `default`: Self = [timestamp, severity, source, metadata]
+        public static let all: Self = [fullDateTime, severity, source, metadata, sourceLocation]
     }
     
     
@@ -66,9 +71,9 @@ struct PrintLogging {
     public let dateFormatter: ISO8601DateFormatter?
 
     
-    init(label: String, level: Log.Level = .trace, privacy: Bool = false, metadata: Log.Metadata = [:], items: ItemOptions = .default) {
+    public init(source: String, level: Log.Level = .trace, privacy: Bool = false, metadata: Log.Metadata = [:], items: ItemOptions = .default) {
         
-        settings = (label, level, privacy, metadata)
+        settings = (source, level, privacy, metadata)
         self.items = items
         
         if !items.isDisjoint(with: .fullDateTime) {
@@ -94,7 +99,7 @@ struct PrintLogging {
     }
     
     
-    func log(_ level: Log.Level, _ message: @autoclosure () -> Log.Message, _ metadata: @autoclosure () -> Log.Metadata, file: String, function: String, line: UInt) {
+    public func log(_ level: Log.Level, _ message: @autoclosure () -> Log.Message, _ metadata: @autoclosure () -> Log.Metadata, file: String, function: String, line: UInt) {
         
         guard level >= settings.level else { return }
         
@@ -111,7 +116,7 @@ struct PrintLogging {
             }
         }
         
-        if items.contains(.label) {
+        if items.contains(.source) {
             text.append("'\(settings.label)' ")
         }
 
